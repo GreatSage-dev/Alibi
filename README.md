@@ -1,146 +1,202 @@
 # Alibi: Temporal Graph Verification Layer for Autonomous AI Agents
 
-> 🏆 **Hack Hydra 2026** — *Track 03: Memory & Context Retrieval*  
-> ⚡ **Best Use of HydraDB** (SuiteSparse-GraphBLAS · SlateDB S3 Storage · Temporal Versioning)
+<div align="center">
+  
+  [![Hackathon](https://img.shields.io/badge/Hack%20Hydra-2026-blueviolet?style=for-the-badge&logo=github)](https://github.com/GreatSage-dev/Alibi)
+  [![Track](https://img.shields.io/badge/Track%2003-Memory%20%26%20Context-FF6B6B?style=for-the-badge)](https://github.com/GreatSage-dev/Alibi)
+  [![Database](https://img.shields.io/badge/Graph%20DB-HydraDB%20%2F%20SlateDB-00C853?style=for-the-badge)](https://github.com/GreatSage-dev/Alibi)
+  [![Licence](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](https://github.com/GreatSage-dev/Alibi)
+
+  <h3><i>"Proving what your AI agents actually knew at the moment of decision."</i></h3>
+
+  <p align="center">
+    <a href="#-the-pitch-why-vector-memory-fails-agents">Executive Summary</a> •
+    <a href="#-system-architecture">Architecture</a> •
+    <a href="#-mathematical-verification-models">Formal Spec</a> •
+    <a href="#-the-four-deterministic-verdicts">Verdicts</a> •
+    <a href="#-interactive-developer-console">UI Walkthrough</a> •
+    <a href="#-quickstart--installation">Quickstart</a> •
+    <a href="#-loophole-safeguards-suite">Safeguards</a>
+  </p>
+</div>
 
 ---
 
-## 🎯 Executive Summary: Why Vector Memory Fails Agents
+## 💡 The Pitch: Why Vector Memory Fails Agents
 
-In multi-agent and long-running autonomous workflows, AI agents make high-stakes claims:
-- *"I adhered to the current architecture specification."*
-- *"I executed the user refund according to active security standards."*
-- *"Task complete: Microservice deployed to staging."*
+In autonomous agent networks, AI agents make critical, irreversible decisions:
+* *"I executed the user refund according to active safety standards."*
+* *"I updated the database schema in compliance with our architecture specifications."*
+* *"Task complete: Microservice deployed to staging."*
 
-Today, traditional vector databases perform **similarity search without chronology**. 
-1. **The Supersession Trap (Beat 1)**: An agent queries for API gateway guidelines on August 14, 2026. The vector database returns `ADR-17` (GraphQL) with 94% cosine similarity, completely blind to the fact that `ADR-24` (REST Migration) superseded `ADR-17` 117 days prior.
-2. **Cross-Session Relational Conflict (Beat 2)**: Support Agent #104 approves a $4,500 refund for Customer #4471 (Marcus Vance). Flat replay logs only check Agent #104 against itself, missing that Risk Sentinel #802 flagged Customer #4471 for account takeover 3 hours earlier in a separate session.
+Today, traditional **vector databases** perform similarity search but are **chronologically blind**:
 
-**Alibi solves this by intercepting agent decisions and verifying them deterministically across HydraDB temporal knowledge graphs.**
+### Scenario A: The Supersession Trap (Beat 1)
+An agent queries vector memory for API gateway guidelines on August 14. The vector database returns `ADR-17` (GraphQL Integration) with **94% cosine similarity**. However, `ADR-17` was superseded by `ADR-24` (REST Migration) 117 days prior. 
+* **The Catastrophe:** The agent builds an obsolete interface, breaking downstream services. Similarity search was successful, but **chronologically invalid**.
+
+### Scenario B: The Relational Cross-Decision Conflict (Beat 2)
+Support Agent #104 approves a $4,500 refund for `Customer #4471` (Marcus Vance). It reviews its own flat log history and sees no issues.
+* **The Catastrophe:** It misses that Risk Sentinel #802 (an independent agent in another session) placed an active **Fraud Lock** on `Customer #4471` 3 hours earlier. 
+
+**Alibi resolves this by intercepting agent decisions and validating them deterministically across HydraDB temporal knowledge graphs.**
 
 ---
 
 ## 🏛️ System Architecture
 
+Alibi tracks state by mapping agent execution trails into a structured directed acyclic graph (DAG) persisted in **HydraDB** (built on SuiteSparse-GraphBLAS and SlateDB S3 storage).
+
 ```
-                                    ┌────────────────────────────────────────────────────────┐
-                                    │               Alibi Verification Engine                │
-                                    │    (Query 1: Temporal  ·  Query 2: Relational)          │
-                                    └──────────────────────────┬─────────────────────────────┘
-                                                               │
-                                         ┌─────────────────────┴─────────────────────┐
-                                         ▼                                           ▼
-                       ┌───────────────────────────────────┐       ┌───────────────────────────────────┐
-                       │       HydraDB Graph Layer         │       │       SlateDB Storage Layer       │
-                       │   - SuiteSparse GraphBLAS Traversal│       │   - LSM-Tree Object Store (S3)    │
-                       │   - Point-in-Time Temporal Slices │       │   - Immutable SST Snapshots       │
-                       │   - Multi-Hop Supersession Chains │       │   - Cryptographic Merkle Proofs   │
-                       └───────────────────────────────────┘       └───────────────────────────────────┘
+                      [ Agent Decision Intercepted ]
+                                    │
+                                    ▼
+                 ┌──────────────────────────────────────┐
+                 │       Alibi Verification Engine      │
+                 │   - Query 1: Temporal Supersession   │
+                 │   - Query 2: Relational Conflict     │
+                 │   - Safeguard: Causality Check       │
+                 └──────────────────┬───────────────────┘
+                                    │
+          ┌─────────────────────────┴─────────────────────────┐
+          ▼                                                   ▼
+┌───────────────────────────────────┐               ┌───────────────────────────────────┐
+│     HydraDB (Graph Database)      │               │       SlateDB Storage Layer       │
+│  - SuiteSparse GraphBLAS Engine   │               │  - Immutable LSM-Tree (S3)        │
+│  - Point-in-Time Temporal Slices  │               │  - Cryptographic Merkle Receipts  │
+│  - Multi-Hop Supersession Paths   │               │  - SHA-256 State Verification     │
+└───────────────────────────────────┘               └───────────────────────────────────┘
 ```
 
 ### 1. The 7 Graph Node Types
-- **`Agent`**: Autonomous actor (model, version, session ID).
-- **`Entity`**: Shared domain object (`CUSTOMER`, `SERVICE`, `POLICY`, `WALLET`). Connects decisions across agents.
-- **`Decision`**: Timestamped choice made by an agent ($t = \text{timestamp}$, intent, rationale).
-- **`Evidence`**: Architecture specifications, ADRs, RFCs, compliance policies.
-- **`Action`**: Concrete tool calls, code modifications, payment authorizations.
-- **`Outcome`**: Execution traces, HTTP diffs, test outputs.
-- **`Claim`**: Formal statement of fact made by the agent.
+1. **`Agent`**: Represents the autonomous runner (identity, LLM model version, configuration).
+2. **`Entity`**: Represents shared domain state (`CUSTOMER`, `SERVICE`, `WALLET`). Links disparate sessions.
+3. **`Decision`**: The choice made by an agent ($t = \text{timestamp}$, intent, rationale).
+4. **`Evidence`**: Architecture guidelines, specifications, ADRs, compliance constraints.
+5. **`Action`**: Tool invocations, code modifications, or database transactions.
+6. **`Outcome`**: Concrete execution output (status: `SUCCESS`, `FAILURE`, `FLAGGED`).
+7. **`Claim`**: The assertion of correctness or completion made by the agent.
 
 ### 2. The 6 Native Relational & Temporal Edges
-- **`Decision --[retrieved]--> Evidence`**: Context ingested by agent at runtime.
-- **`Evidence --[superseded_by]--> Evidence`**: **Core temporal chain** linking historical standards to their replacements.
-- **`Decision --[concerns]--> Entity`**: **Relational bridge** linking disparate agents to the same shared state.
-- **`Decision --[led_to]--> Action`**: Causal execution link.
-- **`Action --[produced]--> Outcome`**: Concrete verifiable output.
-- **`Claim --[verified_against]--> Evidence`**: Target ground truth assertion.
+* **`Decision --[retrieved]--> Evidence`**: Context ingested by agent at runtime.
+* **`Evidence --[superseded_by]--> Evidence`**: Links historical standards to their replacements.
+* **`Decision --[concerns]--> Entity`**: Relational link mapping agent intents to domain objects.
+* **`Decision --[led_to]--> Action`**: Relational chain of intent to execution.
+* **`Action --[produced]--> Outcome`**: Verifies if the action succeeded or failed.
+* **`Claim --[verified_against]--> Evidence`**: Anchors agent claims to ground truths.
 
 ---
 
-## 🔬 Four Deterministic Verification Verdicts
+## 🧮 Mathematical Verification Models
 
-Unlike non-deterministic LLM-as-a-judge evaluators, Alibi produces **100% deterministic mathematical proofs**:
+Alibi replaces loose, hallucination-prone "LLM judges" with strict mathematical proofs evaluated against the HydraDB state:
 
-| Verdict | Trigger Condition | Example Scenario |
+### 1. Temporal Validity (Query 1)
+For a decision $d$ that retrieved evidence $e$, let $S(e)$ be the directed supersession path such that:
+$$e \xrightarrow{\text{superseded\_by}^*} e'$$
+The retrieved evidence $e$ is **valid** if and only if no superseding node $e'$ was committed prior to or at the decision timestamp $t(d)$:
+$$\nexists e' \in S(e) \quad \text{s.t.} \quad t(e') \le t(d)$$
+If such an $e'$ exists, the context is flagged as **`STALE`** with a gap delta of:
+$$\Delta_{\text{stale}} = t(d) - t(e')$$
+
+### 2. Relational Consistency (Query 2)
+For a decision $d$ concerning entity $E$, let $D_{\text{prior}}(E)$ be the set of decisions such that:
+$$d' \xrightarrow{\text{concerns}} E \quad \text{and} \quad t(d') < t(d)$$
+The decision $d$ is **conflict-free** if and only if no prior decision $d'$ placed a restrictive lock or fraud flag on $E$:
+$$\nexists d' \in D_{\text{prior}}(E) \quad \text{s.t.} \quad \text{tag}(E) = \text{"fraud-watch"} \lor \text{status}(\text{outcome}(d')) = \text{"FLAGGED"}$$
+If such a condition exists, the verdict is flagged as **`CONFLICTED`**.
+
+---
+
+## 🔬 The Four Deterministic Verdicts
+
+| Verdict | Graphical Trigger Condition | Real Scenario Example |
 | :--- | :--- | :--- |
-| **`STALE`** | $t_{\text{superseded}} \le t_{\text{decision}}$ along `Evidence --[superseded_by*]--> Evidence` | Agent built GraphQL client on Aug 14; superseded by ADR-24 on Apr 19 (**117-day staleness gap**). |
-| **`CONFLICTED`** | Prior decision on shared `Entity` has conflicting tag / fraud lock ($t_{\text{prior}} < t_{\text{decision}}$) | Support Agent approves refund on Customer #4471, contradicting Risk Sentinel's active Fraud Lock. |
-| **`UNVERIFIABLE`** | Claim lacks causal `Action` or `Outcome` nodes in the HydraDB graph | Agent claims *"Canary deployed"* with zero execution graph backing (**Strict Abstention Guarantee**). |
-| **`CLEAR`** | Active evidence chain validated, no entity conflicts, all causal links verified | Agent retrieves active ADR-24 and generates compliant OpenAPI endpoints. |
+| **`CLEAR`** | Valid context retrieved, no entity conflicts, actions verified. | Agent retrieves active `ADR-24` and writes a compliant REST routing module. |
+| **`STALE`** | $t(e') \le t(d)$ along `Evidence --[superseded_by*]--> Evidence` | Agent uses GraphQL `ADR-17` on Aug 14, blind to `ADR-24` committed on Apr 19 (**117-day gap**). |
+| **`CONFLICTED`** | Prior decision on concerns-entity is flagged or restricted. | Support agent dispatches $4,500 refund, violating Risk Sentinel's active Fraud Lock. |
+| **`UNVERIFIABLE`** | Insufficient graph history, causality failure, or circular refs. | Agent claims task completion, but no verifiable actions/outcomes exist. |
 
 ---
 
-## ⚡ Core HydraDB & SlateDB Innovations Showcase
+## 💻 Interactive Developer Console
 
-### 1. Point-in-Time "Time-Travel" Graph Scrubber
-HydraDB enables time-slice state reconstruction via `client.getTemporalSnapshot(timestamp)`.
-- **Mar 15, 2026**: `ADR-17` is the active company standard; `ADR-24` does not exist.
-- **May 01, 2026**: `ADR-24` is published, creating a `superseded_by` edge.
-- **Aug 14, 2026**: Agent action triggers verification; Alibi proves the agent acted on obsolete data.
+Alibi provides a high-fidelity visual console built with a modern light-fintech design:
 
-### 2. SuiteSparse GraphBLAS Multi-Hop Traversal
-Alibi runs N-hop recursive traversals:
-```cypher
-// Query 1: Temporal Multi-Hop Supersession Traversal
-MATCH (d:Decision {id: $decision_id})-[r:retrieved]->(e:Evidence)
-MATCH path = (e)-[:superseded_by*1..5]->(latest:Evidence)
-WHERE latest.timestamp <= d.timestamp
-RETURN d.id, e.title AS stale_spec, latest.title AS active_spec,
-       duration.between(e.timestamp, latest.timestamp).days AS staleness_gap_days;
-```
-
-### 3. Immutable Cryptographic Receipts on SlateDB
-Every verification result commits an audit payload pointing to an immutable `.sst` snapshot on cloud object storage, generating a SHA-256 Merkle root for **EU AI Act Article 12 compliance**.
+* **Landing Page**: Implements custom, floating 3D canvas modules demonstrating the **Verification Shield**, **Temporal Chains** (with real-time animated node packet flows), and holographic **Proof Seals**.
+* **Temporal Tab (Beat 1)**: Allows simulating spec queries to witness the 117-day staleness gap warning.
+* **Relational Tab (Beat 2)**: Visualizes wallet dispute resolutions and quarantine overrides.
+* **Trace DAG (Beat 3)**: A full-screen canvas powered by `@xyflow/react` featuring:
+  * **Point-in-Time Scrubber**: Slide back in time to reconstruct the exact database state at any historic moment.
+  * **Live OpenCypher Query Inspector**: View the raw GraphBLAS queries executed against the graph.
+  * **1-Click Proof Receipt Downloader**: Export immutable cryptographic JSON validation tokens.
 
 ---
 
-## 🚀 Quickstart & Testing
+## 🚀 Quickstart & Installation
 
-### 1. Clone and Install
+### 1. Prerequisites
+Ensure you have Node.js (v18+) and Docker installed.
+
+### 2. Clone & Install Dependencies
 ```bash
-git clone https://github.com/your-username/alibi.git
-cd alibi
+git clone https://github.com/GreatSage-dev/Alibi.git
+cd Alibi
 npm install
 ```
 
-### 2. Run Automated Verification Tests
-```bash
-npm test
-```
-**Test Suite Results (11/11 Passing):**
-```
-✔ Track 03 Core Test: Detects Stale Context via Temporal Supersession Chain (246.8ms)
-✔ Detects Silent Divergence when code actions violate retrieved spec (29.7ms)
-✔ Abstains cleanly on False Completion when action trail is missing (12.1ms)
-✔ Verifies compliant runs when active evidence and compliant actions align (21.0ms)
-✔ Resolves cross-session aliases to canonical entity nodes (3.1ms)
-✔ Provides accurate temporal snapshot queries in HydraDB (16.8ms)
-✔ Includes SlateDB storage proof in verification result (20.9ms)
-✔ Integrates official @hydradb/sdk and Neo4j Bolt connectivity (34.4ms)
-✔ Detects circular reference loophole and marks it UNVERIFIABLE (50.6ms)
-✔ Detects future-dated evidence causality violation loophole and marks it UNVERIFIABLE (37.0ms)
-✔ Detects failed outcomes on TASK_COMPLETION and marks it CONFLICTED (13.6ms)
-```
-
-### 3. Launch with Docker Compose (Live HydraDB Server Connection)
-To connect to the official HydraDB graph database container and SlateDB volume storage:
+### 3. Spin up Official HydraDB Container
+Start the official HydraDB image exposing Bolt connection endpoints:
 ```bash
 docker compose up -d
 ```
-This runs the official `ghcr.io/hydra-db/hydradb:latest` container exposing Bolt protocol on port `7687` for OpenCypher query execution.
+This deploys `ghcr.io/hydra-db/hydradb:latest` running Neo4j/Bolt graph services on `bolt://localhost:7687`.
 
-### 4. Launch the Interactive Application
+### 4. Run the Verification Tests
+Execute the local and integration test suite:
+```bash
+npm test
+```
+
+**Raw Test Suite Diagnostics (11/11 Passing):**
+```text
+▶ Alibi: Temporal Graph Verification Layer for AI Agents
+  ✔ Track 03 Core Test: Detects Stale Context via Temporal Supersession Chain (246.8ms)
+  ✔ Detects Silent Divergence when code actions violate retrieved spec (29.7ms)
+  ✔ Abstains cleanly on False Completion when action trail is missing (12.1ms)
+  ✔ Verifies compliant runs when active evidence and compliant actions align (21.0ms)
+  ✔ Resolves cross-session aliases to canonical entity nodes (3.1ms)
+  ✔ Provides accurate temporal snapshot queries in HydraDB (16.8ms)
+  ✔ Includes SlateDB storage proof in verification result (20.9ms)
+  ✔ Integrates official @hydradb/sdk and Neo4j Bolt connectivity (34.4ms)
+  ✔ Detects circular reference loophole and marks it UNVERIFIABLE (50.6ms)
+  ✔ Detects future-dated evidence causality violation loophole and marks it UNVERIFIABLE (37.0ms)
+  ✔ Detects failed outcomes on TASK_COMPLETION and marks it CONFLICTED (13.6ms)
+
+✔ Alibi: Temporal Graph Verification Layer for AI Agents (492.5ms)
+ℹ tests 11
+ℹ suites 1
+ℹ pass 11
+ℹ fail 0
+```
+
+### 5. Launch the Web Console
+Compile the optimized production build and launch the server:
 ```bash
 npm run build
 npm run start
 ```
-Open **[http://localhost:3000](http://localhost:3000)** to explore:
-* **Landing Page**: Outcrowd clean/light 3D visual language with custom Verification Shield, Temporal Chain, and Proof Seal.
-* **Developer Console (`/dashboard`)**:
-  * **Temporal Tab (Beat 1)**: Interactive ADR supersession tester.
-  * **Relational Tab (Beat 2)**: Cross-decision entity dispute resolver.
-  * **Trace DAG**: Interactive ReactFlow canvas with **Point-in-Time Scrubber**, **Live Cypher Query Inspector**, and **1-Click Proof Receipt (.json) Downloader**.
-  * **Simulate Tab**: Real-time agent execution pipeline.
+Navigate to **[http://localhost:3000](http://localhost:3000)**.
+
+---
+
+## 🛡️ Loophole Safeguards Suite
+
+Alibi incorporates three state-of-the-art protections against common agent graph hacks:
+
+1. **Cycle Prevention:** Detects and flags cyclic supersession references (`A -> B -> A`), returning `UNVERIFIABLE` to avoid infinite traversal loops.
+2. **Causality Check:** Prevents agents from retrieving future-dated evidence relative to the decision timestamp (blocking "time-travel" context exploits).
+3. **Outcome Enforcement:** Verifies that agent claims of `TASK_COMPLETION` are backed by successful Outcomes, immediately flagging any `FAILURE` outputs.
 
 ---
 
@@ -149,4 +205,4 @@ Open **[http://localhost:3000](http://localhost:3000)** to explore:
 * **Track**: Track 03 — Memory & Context Retrieval
 * **Target Prize**: Grand Champion & Best Use of HydraDB
 
-*Licensed under MIT for Hack Hydra 2026.*
+*Licensed under the MIT License - Hack Hydra 2026.*
