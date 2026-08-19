@@ -99,12 +99,16 @@ $$\nexists e' \in S(e) \quad \text{s.t.} \quad t(e') \le t(d)$$
 If such an $e'$ exists, the context is flagged as **`STALE`** with a gap delta of:
 $$\Delta_{\text{stale}} = t(d) - t(e')$$
 
+> 💡 **Plain English Translation:** An agent cannot act on a document (like a specification) if a newer version was already published before the agent made its decision. If they do, the action is marked **STALE** and the exact delay is calculated (e.g., "117 days out-of-date").
+
 ### 2. Relational Consistency (Query 2)
 For a decision $d$ concerning entity $E$, let $D_{\text{prior}}(E)$ be the set of decisions such that:
 $$d' \xrightarrow{\text{concerns}} E \quad \text{and} \quad t(d') < t(d)$$
 The decision $d$ is **conflict-free** if and only if no prior decision $d'$ placed a restrictive lock or fraud flag on $E$:
 $$\nexists d' \in D_{\text{prior}}(E) \quad \text{s.t.} \quad \text{tag}(E) = \text{"fraud-watch"} \lor \text{status}(\text{outcome}(d')) = \text{"FLAGGED"}$$
 If such a condition exists, the verdict is flagged as **`CONFLICTED`**.
+
+> 💡 **Plain English Translation:** An agent cannot approve a transaction on a customer account or wallet if a prior decision (from another agent or session) has already flagged that specific account for fraud or restricted its access. If they try, the system intercepts and blocks it as **CONFLICTED**.
 
 ---
 
