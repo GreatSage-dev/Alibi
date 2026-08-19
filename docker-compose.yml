@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  hydradb:
+    image: ghcr.io/hydra-db/hydradb:latest
+    container_name: alibi-hydradb-server
+    ports:
+      - "7687:7687"   # Bolt Protocol (OpenCypher)
+      - "8080:8080"   # HTTP/REST & Context Retrieval API
+    environment:
+      - HYDRADB_AUTH_ENABLED=false
+      - HYDRADB_STORAGE_BACKEND=slatedb
+      - SLATEDB_S3_BUCKET=alibi-hydradb-snapshots
+      - HYDRADB_LOG_LEVEL=info
+    volumes:
+      - ./data/hydradb_server_data:/var/lib/hydradb/data
+      - ./data/slatedb_snapshots:/var/lib/hydradb/snapshots
+    restart: unless-stopped
+
+  alibi-app:
+    build: .
+    container_name: alibi-app
+    ports:
+      - "3000:3000"
+    environment:
+      - HYDRADB_BOLT_URI=bolt://hydradb:7687
+      - HYDRADB_URL=http://hydradb:8080
+      - HYDRADB_API_KEY=alibi_hack_hydra_demo_key
+    depends_on:
+      - hydradb
+    restart: unless-stopped

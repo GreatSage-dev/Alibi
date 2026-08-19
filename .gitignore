@@ -1,0 +1,22 @@
+# Next.js build output
+.next/
+out/
+build/
+
+# Node dependencies
+node_modules/
+package-lock.json
+
+# Local database store and snapshots
+data/
+*.db
+*.log
+*.sst
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS files
+.DS_Store
+Thumbs.db
