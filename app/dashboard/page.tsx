@@ -25,6 +25,84 @@ import {
   Sparkles
 } from 'lucide-react';
 
+const EvidenceChain = ({ verification }: { verification: VerificationResult | null }) => {
+  if (!verification) return null;
+  const { verdict } = verification;
+
+  if (verdict === 'STALE') {
+    const retrievedTitle = verification.supersession_chain?.retrieved_title?.split(':')[0] || 'Evidence';
+    const retrievedDate = verification.temporal_delta?.evidence_date ? new Date(verification.temporal_delta.evidence_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '';
+    const supersedingTitle = verification.supersession_chain?.superseding_title?.split(':')[0] || 'New Evidence';
+    const supersedingDate = verification.supersession_chain?.superseded_at ? new Date(verification.supersession_chain.superseded_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '';
+    const decisionDate = verification.temporal_delta?.decision_date ? new Date(verification.temporal_delta.decision_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '';
+    const gap = verification.temporal_delta?.staleness_gap_days || 0;
+
+    return (
+      <div className="card-static bg-[#FEF2F2]/40 border border-[#DC2626]/20 p-5 rounded-xl mt-4 font-mono text-xs flex flex-col items-center text-center space-y-1.5 text-[#475569]">
+        <div className="font-semibold text-[#DC2626] mb-2 uppercase">AGENT DECISION</div>
+        <div>Agent used {retrievedTitle}</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div>{retrievedTitle} was valid on {retrievedDate}</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div>{supersedingTitle} superseded it on {supersedingDate}</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div>Agent acted on {decisionDate}</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div className="font-semibold text-[#DC2626]">Reason: evidence was superseded {gap} days before the decision.</div>
+      </div>
+    );
+  }
+
+  if (verdict === 'CONFLICTED') {
+    const decisionId = verification.decision_id || 'Decision';
+    const entityName = verification.cross_decision_conflict?.entity_name || 'Entity';
+    let priorTimeStr = 'Created earlier';
+    const reasonMatch = verification.cross_decision_conflict?.conflict_reason.match(/\((.*?)\)/);
+    if (reasonMatch && reasonMatch[1]) {
+      priorTimeStr = `Created ${reasonMatch[1]}`;
+    }
+
+    return (
+      <div className="card-static bg-[#FFFBEB]/40 border border-[#D97706]/20 p-5 rounded-xl mt-4 font-mono text-xs flex flex-col items-center text-center space-y-1.5 text-[#475569]">
+        <div className="font-semibold text-[#B45309] mb-2 uppercase">AGENT DECISION</div>
+        <div>Decision {decisionId.split('-').pop()} concerns {entityName}</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div>Connected evidence: {entityName} → Fraud investigation → Risk flag HIGH → {priorTimeStr}</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div className="font-semibold text-[#B45309]">Therefore: this decision conflicts with a previous unresolved fraud decision.</div>
+      </div>
+    );
+  }
+
+  if (verdict === 'UNVERIFIABLE') {
+    return (
+      <div className="card-static bg-[#F1F5F9]/40 border border-[#CBD5E1]/40 p-5 rounded-xl mt-4 font-mono text-xs flex flex-col items-center text-center space-y-1.5 text-[#475569]">
+        <div className="font-semibold text-[#475569] mb-2 uppercase">AGENT DECISION</div>
+        <div>We found no evidence establishing whether this decision was valid. Alibi refuses to infer correctness without evidence.</div>
+      </div>
+    );
+  }
+
+  if (verdict === 'CLEAR') {
+    return (
+      <div className="card-static bg-[#F0FDF4]/40 border border-[#16A34A]/20 p-5 rounded-xl mt-4 font-mono text-xs flex flex-col items-center text-center space-y-1.5 text-[#475569]">
+        <div className="font-semibold text-[#16A34A] mb-2 uppercase">AGENT DECISION</div>
+        <div>Agent retrieved active evidence</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div>What was true at decision time: evidence remains valid</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div>What changed afterward: nothing superseded this evidence</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div>Connected decisions: no relational conflicts detected</div>
+        <div className="text-[#94A3B8]">↓</div>
+        <div className="font-semibold text-[#166534]">Verification result: CLEAR</div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('home');
   const [activeScenarioId, setActiveScenarioId] = useState('supersession-trap');
@@ -348,30 +426,7 @@ export default function DashboardPage() {
               onChange={(e) => setTemporalInput(e.target.value)}
             />
 
-            {activeScenarioId === 'supersession-trap' ? (
-              <div className="card-static bg-[#FEF2F2]/40 border border-[#DC2626]/10 p-5 rounded-xl mt-4 text-xs font-mono">
-                <div className="flex items-center gap-2 text-[#DC2626] font-semibold mb-2">
-                  <Flame size={13} />
-                  TEMPORAL SUPERSESSION DETECTED (STALE)
-                </div>
-                <div className="text-[#475569] space-y-1.5 mt-2">
-                  <div>• Retrieved standard: <span className="font-semibold text-[#0F172A]">ADR-17 (2026-03-03)</span></div>
-                  <div>• Superseding standard: <span className="font-semibold text-[#16A34A]">ADR-24 (2026-04-19)</span></div>
-                  <div>• Decision timestamp: <span className="font-semibold text-[#0F172A]">2026-08-14</span></div>
-                  <div>• Staleness window: <span className="font-semibold text-[#DC2626]">117 Days Invalid</span></div>
-                </div>
-              </div>
-            ) : (
-              <div className="card-static bg-[#F0FDF4]/40 border border-[#16A34A]/10 p-5 rounded-xl mt-4 text-xs font-mono">
-                <div className="flex items-center gap-2 text-[#166534] font-semibold mb-2">
-                  <CheckCircle2 size={13} />
-                  ACTIVE STANDARD VERIFIED (CLEAR)
-                </div>
-                <div className="text-[#475569] mt-1 leading-relaxed">
-                  ADR-24 is the active head of the supersession chain. No newer standard exists in HydraDB.
-                </div>
-              </div>
-            )}
+            <EvidenceChain verification={verification} />
             
             <button 
               className="btn btn-primary w-full mt-5 h-10 bg-[#0F172A] text-white hover:bg-[#1E293B] flex items-center justify-center gap-2 transition-colors"
@@ -406,15 +461,7 @@ export default function DashboardPage() {
               onChange={(e) => setRelationalInput(e.target.value)}
             />
             
-            <div className="card-static bg-[#FEF2F2]/40 border border-[#DC2626]/10 p-5 rounded-xl mt-3">
-              <div className="flex items-center justify-between">
-                <span className="bg-[#DC2626] text-white text-[9.5px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider">CONTRADICTION DETECTED</span>
-                <span className="text-[9.5px] font-mono text-[#DC2626] font-semibold">Cross-Session Hop</span>
-              </div>
-              <div className="text-xs text-[#475569] mt-2.5 leading-relaxed font-normal">
-                Support Agent #104 approved a $4,500 refund, but Risk Sentinel Agent #802 placed a Fraud Lock on <span className="font-semibold text-[#0F172A]">Customer #4471</span> 3 hours prior in an unrelated session.
-              </div>
-            </div>
+            <EvidenceChain verification={verification} />
 
             <div className="space-y-2.5 mt-5">
               <div className="p-3.5 rounded-xl border border-[#E2E8F0]/60 bg-[#F8FAFC] flex justify-between items-center text-sm">
